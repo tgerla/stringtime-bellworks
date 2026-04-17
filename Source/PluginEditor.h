@@ -17,6 +17,7 @@ public:
 private:
     using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
     using ComboAttachment = juce::AudioProcessorValueTreeState::ComboBoxAttachment;
+    using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
 
     struct LabeledSlider
     {
@@ -31,6 +32,7 @@ private:
     void drawLfoWavePreview (juce::Graphics& g,
                              juce::Rectangle<int> area,
                              int waveform,
+                             bool enabled,
                              float rateHz,
                              float depth,
                              float timeSeconds,
@@ -90,10 +92,12 @@ private:
     juce::DrawableButton lfo1WaveTriangleButton { "LFO1Triangle", juce::DrawableButton::ImageOnButtonBackground };
     juce::DrawableButton lfo1WaveSampleHoldButton { "LFO1SampleHold", juce::DrawableButton::ImageOnButtonBackground };
     juce::TextButton lfo1WaveOffButton;
+    std::unique_ptr<ButtonAttachment> lfo1EnabledAttachment;
     juce::DrawableButton lfo2WaveSineButton { "LFO2Sine", juce::DrawableButton::ImageOnButtonBackground };
     juce::DrawableButton lfo2WaveTriangleButton { "LFO2Triangle", juce::DrawableButton::ImageOnButtonBackground };
     juce::DrawableButton lfo2WaveSampleHoldButton { "LFO2SampleHold", juce::DrawableButton::ImageOnButtonBackground };
     juce::TextButton lfo2WaveOffButton;
+    std::unique_ptr<ButtonAttachment> lfo2EnabledAttachment;
 
     juce::Label matrixDest1Label;
     juce::ComboBox matrixDest1Box;
@@ -179,6 +183,7 @@ private:
 
     juce::Rectangle<int> lfoWavePreview1Bounds;
     juce::Rectangle<int> lfoWavePreview2Bounds;
+    juce::Rectangle<int> lfoDividerBounds;
 
     enum class EditorPage
     {

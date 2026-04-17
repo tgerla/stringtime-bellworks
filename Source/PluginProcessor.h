@@ -50,6 +50,8 @@ public:
     juce::MidiKeyboardState keyboardState;
 
 private:
+    static constexpr const char* lastPresetDirectoryKey = "lastPresetDirectory";
+
     struct PresetDefinition
     {
         juce::String name;
@@ -76,9 +78,11 @@ private:
         float outputGainDb = -9.0f;
         float lfoRateHz = 0.35f;
         float lfoDepth = 0.0f;
+        bool lfoEnabled = true;
         int lfoWaveform = 0;
         float lfo2RateHz = 0.60f;
         float lfo2Depth = 0.0f;
+        bool lfo2Enabled = true;
         int lfo2Waveform = 0;
         int matrixDest1 = 0;
         float matrixAmount1 = 0.0f;
@@ -118,6 +122,7 @@ private:
     std::vector<float> delayBufferR;
     int delayWritePosition = 0;
 
+    juce::ApplicationProperties appProperties;
     juce::File lastPresetDirectory;
 
     std::vector<PresetDefinition> presetBank;
@@ -128,6 +133,9 @@ private:
     void processDelay (juce::AudioBuffer<float>& buffer);
     void processReverb (juce::AudioBuffer<float>& buffer);
     void processCompressor (juce::AudioBuffer<float>& buffer);
+    void initialiseUserPreferences();
+    void loadLastPresetDirectoryFromPreferences();
+    void storeLastPresetDirectoryInPreferences();
     void initialisePresetBank();
     void setParameterById (const juce::String& parameterId, float value);
 

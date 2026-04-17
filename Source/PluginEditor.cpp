@@ -6,9 +6,16 @@ const auto sectionTitleColour = juce::Colour::fromRGB (228, 226, 212);
 const auto bodyTextColour = juce::Colour::fromRGB (213, 220, 225);
 const auto accentA = juce::Colour::fromRGB (226, 145, 88);
 const auto accentB = juce::Colour::fromRGB (112, 159, 197);
+const auto dialPointerColour = juce::Colour::fromRGB (244, 186, 113);
+const auto dialFillColour = juce::Colour::fromRGB (150, 205, 246);
+const auto dialOutlineColour = juce::Colours::white.withAlpha (0.32f);
+const auto dialTextColour = juce::Colour::fromRGB (234, 239, 244);
+const auto dialTextBackground = juce::Colour::fromRGB (8, 12, 18).withAlpha (0.78f);
 const auto cardBase = juce::Colour::fromRGB (22, 31, 40);
 const auto backgroundTop = juce::Colour::fromRGB (41, 52, 60);
 const auto backgroundBottom = juce::Colour::fromRGB (16, 21, 28);
+constexpr int keyboardFixedHeight = 130;
+constexpr int keyboardTopGap = 8;
 
 std::unique_ptr<juce::Drawable> createWaveIconDrawable (const juce::String& pathData, juce::Colour strokeColour)
 {
@@ -104,25 +111,24 @@ ModelingSynthTwoAudioProcessorEditor::ModelingSynthTwoAudioProcessorEditor (Mode
     octaveLabel.setColour (juce::Label::textColourId, bodyTextColour);
     addAndMakeVisible (octaveLabel);
 
-    lfoWaveformBox.addItemList (juce::StringArray { "Sine", "Triangle", "Sample & Hold", "Off" }, 1);
+    lfoWaveformBox.addItemList (juce::StringArray { "Sine", "Triangle", "Sample & Hold" }, 1);
     lfoWaveformAttachment = std::make_unique<ComboAttachment> (processorRef.parameters, "lfoWaveform", lfoWaveformBox);
     lfoWaveformBox.onChange = [this] { updateWaveformButtons(); };
 
-    lfo2WaveformBox.addItemList (juce::StringArray { "Sine", "Triangle", "Sample & Hold", "Off" }, 1);
+    lfo2WaveformBox.addItemList (juce::StringArray { "Sine", "Triangle", "Sample & Hold" }, 1);
     lfo2WaveformAttachment = std::make_unique<ComboAttachment> (processorRef.parameters, "lfo2Waveform", lfo2WaveformBox);
     lfo2WaveformBox.onChange = [this] { updateWaveformButtons(); };
 
-    auto configureOffButton = [this] (juce::TextButton& button, std::function<void()> onClick)
+    auto configureEnableButton = [this] (juce::TextButton& button)
     {
-        button.setButtonText ("Off");
-        button.setClickingTogglesState (false);
+        button.setButtonText ("On");
+        button.setClickingTogglesState (true);
         button.setColour (juce::TextButton::buttonColourId, juce::Colours::black.withAlpha (0.24f));
         button.setColour (juce::TextButton::buttonOnColourId, accentB.withAlpha (0.55f));
         button.setColour (juce::TextButton::textColourOffId, bodyTextColour);
         button.setColour (juce::TextButton::textColourOnId, juce::Colours::white);
-        button.getProperties().set ("offButton", true);
-        button.setTooltip ("Disable this LFO waveform");
-        button.onClick = std::move (onClick);
+        button.getProperties().set ("onButton", true);
+        button.setTooltip ("Enable or disable this LFO lane");
         addAndMakeVisible (button);
     };
 
@@ -147,15 +153,20 @@ ModelingSynthTwoAudioProcessorEditor::ModelingSynthTwoAudioProcessorEditor (Mode
     constexpr auto trianglePath = "M2 24 L18 8 L34 24 L50 8 L62 24";
     constexpr auto sampleHoldPath = "M2 24 L2 10 L18 10 L18 24 L34 24 L34 10 L50 10 L50 24 L62 24";
 
-    configureOffButton (lfo1WaveOffButton, [this] { lfoWaveformBox.setSelectedItemIndex (3, juce::sendNotificationSync); });
+    configureEnableButton (lfo1WaveOffButton);
     configureWaveIconButton (lfo1WaveSineButton, sinePath, [this] { lfoWaveformBox.setSelectedItemIndex (0, juce::sendNotificationSync); });
     configureWaveIconButton (lfo1WaveTriangleButton, trianglePath, [this] { lfoWaveformBox.setSelectedItemIndex (1, juce::sendNotificationSync); });
     configureWaveIconButton (lfo1WaveSampleHoldButton, sampleHoldPath, [this] { lfoWaveformBox.setSelectedItemIndex (2, juce::sendNotificationSync); });
 
-    configureOffButton (lfo2WaveOffButton, [this] { lfo2WaveformBox.setSelectedItemIndex (3, juce::sendNotificationSync); });
+    configureEnableButton (lfo2WaveOffButton);
     configureWaveIconButton (lfo2WaveSineButton, sinePath, [this] { lfo2WaveformBox.setSelectedItemIndex (0, juce::sendNotificationSync); });
     configureWaveIconButton (lfo2WaveTriangleButton, trianglePath, [this] { lfo2WaveformBox.setSelectedItemIndex (1, juce::sendNotificationSync); });
     configureWaveIconButton (lfo2WaveSampleHoldButton, sampleHoldPath, [this] { lfo2WaveformBox.setSelectedItemIndex (2, juce::sendNotificationSync); });
+
+    lfo1EnabledAttachment = std::make_unique<ButtonAttachment> (processorRef.parameters, "lfoEnabled", lfo1WaveOffButton);
+    lfo2EnabledAttachment = std::make_unique<ButtonAttachment> (processorRef.parameters, "lfo2Enabled", lfo2WaveOffButton);
+    lfo1WaveOffButton.onClick = [this] { updateWaveformButtons(); };
+    lfo2WaveOffButton.onClick = [this] { updateWaveformButtons(); };
 
     matrixDest1Label.setText ("Slot 1", juce::dontSendNotification);
     matrixDest1Label.setJustificationType (juce::Justification::centred);
@@ -379,10 +390,13 @@ void ModelingSynthTwoAudioProcessorEditor::paint (juce::Graphics& g)
     bounds.removeFromTop (34);
     bounds.removeFromTop (8);
 
-    const auto synthContentHeight = juce::jmin (560, bounds.getHeight() - 150);
+    const auto keyboardBandHeight = juce::jmin (keyboardFixedHeight + keyboardTopGap, bounds.getHeight());
+    bounds.removeFromBottom (keyboardBandHeight);
+
+    const auto availableContentHeight = bounds.getHeight();
     const auto contentHeight = currentPage == EditorPage::synth
-                                   ? synthContentHeight
-                                   : bounds.getHeight() - 130;
+                                   ? juce::jmin (560, availableContentHeight)
+                                   : availableContentHeight;
     auto content = bounds.removeFromTop (contentHeight);
 
     if (currentPage == EditorPage::synth)
@@ -413,9 +427,19 @@ void ModelingSynthTwoAudioProcessorEditor::paint (juce::Graphics& g)
     {
         const auto nowSeconds = (float) (juce::Time::getMillisecondCounterHiRes() * 0.001);
 
+        if (! lfoDividerBounds.isEmpty())
+        {
+            const auto line = lfoDividerBounds.toFloat();
+            g.setColour (juce::Colours::white.withAlpha (0.14f));
+            g.fillRoundedRectangle (line, 1.0f);
+            g.setColour (juce::Colours::black.withAlpha (0.32f));
+            g.drawLine (line.getX(), line.getY() + 1.0f, line.getRight(), line.getY() + 1.0f, 1.0f);
+        }
+
         drawLfoWavePreview (g,
                             lfoWavePreview1Bounds,
                             lfoWaveformBox.getSelectedItemIndex(),
+                            lfo1WaveOffButton.getToggleState(),
                             (float) lfoRate.slider.getValue(),
                             (float) lfoDepth.slider.getValue(),
                             nowSeconds,
@@ -424,6 +448,7 @@ void ModelingSynthTwoAudioProcessorEditor::paint (juce::Graphics& g)
         drawLfoWavePreview (g,
                             lfoWavePreview2Bounds,
                             lfo2WaveformBox.getSelectedItemIndex(),
+                            lfo2WaveOffButton.getToggleState(),
                             (float) lfo2Rate.slider.getValue(),
                             (float) lfo2Depth.slider.getValue(),
                             nowSeconds,
@@ -450,10 +475,15 @@ void ModelingSynthTwoAudioProcessorEditor::resized()
 
     bounds.removeFromTop (8);
 
-    const auto synthContentHeight = juce::jmin (560, bounds.getHeight() - 150);
+    auto keyboardBand = bounds.removeFromBottom (juce::jmin (keyboardFixedHeight + keyboardTopGap, bounds.getHeight()));
+    auto keyboardArea = keyboardBand.removeFromBottom (juce::jmin (keyboardFixedHeight, keyboardBand.getHeight())).reduced (6, 0);
+    const auto keyboardWidth = juce::jmin (780, keyboardArea.getWidth());
+    keyboard.setBounds (keyboardArea.withSizeKeepingCentre (keyboardWidth, keyboardArea.getHeight()));
+
+    const auto availableContentHeight = bounds.getHeight();
     const auto contentHeight = currentPage == EditorPage::synth
-                                   ? synthContentHeight
-                                   : bounds.getHeight() - 130;
+                                   ? juce::jmin (560, availableContentHeight)
+                                   : availableContentHeight;
     auto content = bounds.removeFromTop (contentHeight);
 
     auto synthContent = content;
@@ -581,11 +611,21 @@ void ModelingSynthTwoAudioProcessorEditor::resized()
     auto matrixArea = (currentPage == EditorPage::lfo ? content : synthLowerArea).reduced (12);
     matrixSection.setBounds (matrixArea.removeFromTop (24));
 
-    auto lfoArea = matrixArea.removeFromLeft (330);
-    auto slotArea = matrixArea;
+    constexpr int lfoLaneSeparatorGap = 10;
+    const auto laneHeight = juce::jmax (0, (matrixArea.getHeight() - lfoLaneSeparatorGap) / 2);
 
-    auto lfoBlock1 = lfoArea.removeFromTop (lfoArea.getHeight() / 2).reduced (2);
-    auto lfoBlock2 = lfoArea.reduced (2);
+    auto topLane = matrixArea.removeFromTop (laneHeight);
+    auto dividerBand = matrixArea.removeFromTop (lfoLaneSeparatorGap);
+    auto bottomLane = matrixArea;
+
+    lfoDividerBounds = dividerBand.reduced (10, 0)
+                           .withHeight (1)
+                           .withY (dividerBand.getCentreY());
+
+    auto lfoBlock1 = topLane.removeFromLeft (330).reduced (2);
+    auto slotBand1 = topLane.reduced (0, 2);
+    auto lfoBlock2 = bottomLane.removeFromLeft (330).reduced (2);
+    auto slotBand2 = bottomLane.reduced (0, 2);
 
     auto layoutLfoBlock = [] (juce::Rectangle<int> block,
                               LabeledSlider& rate,
@@ -609,15 +649,34 @@ void ModelingSynthTwoAudioProcessorEditor::resized()
     layoutLfoBlock (lfoBlock1, lfoRate, lfoDepth, lfo1WaveOffButton);
     layoutLfoBlock (lfoBlock2, lfo2Rate, lfo2Depth, lfo2WaveOffButton);
 
-    const auto rowHeight = slotArea.getHeight() / 2;
-    auto slotBand1 = slotArea.removeFromTop (rowHeight).reduced (0, 2);
-    auto slotBand2 = slotArea.reduced (0, 2);
-    auto waveRow1 = slotBand1.removeFromBottom (36);
-    auto waveRow2 = slotBand2.removeFromBottom (36);
-    auto previewRow1 = slotBand1.removeFromBottom (200).reduced (10, 6);
-    auto previewRow2 = slotBand2.removeFromBottom (200).reduced (10, 6);
-    auto slotRow1 = slotBand1;
-    auto slotRow2 = slotBand2;
+    constexpr int waveRowHeight = 36;
+    constexpr int minSlotControlHeight = 88;
+
+    auto layoutSlotBand = [] (juce::Rectangle<int>& band,
+                              juce::Rectangle<int>& waveRow,
+                              juce::Rectangle<int>& previewRow,
+                              juce::Rectangle<int>& slotRow)
+    {
+        constexpr int localWaveRowHeight = waveRowHeight;
+        constexpr int localMinSlotControlHeight = minSlotControlHeight;
+
+        const auto maxPreviewHeight = juce::jmax (120, band.getHeight() - localWaveRowHeight - localMinSlotControlHeight);
+        const auto previewHeight = juce::jmin (200, maxPreviewHeight);
+
+        waveRow = band.removeFromBottom (localWaveRowHeight);
+        previewRow = band.removeFromBottom (juce::jmax (0, previewHeight)).reduced (10, 6);
+        slotRow = band;
+    };
+
+    juce::Rectangle<int> waveRow1;
+    juce::Rectangle<int> waveRow2;
+    juce::Rectangle<int> previewRow1;
+    juce::Rectangle<int> previewRow2;
+    juce::Rectangle<int> slotRow1;
+    juce::Rectangle<int> slotRow2;
+
+    layoutSlotBand (slotBand1, waveRow1, previewRow1, slotRow1);
+    layoutSlotBand (slotBand2, waveRow2, previewRow2, slotRow2);
 
     lfoWavePreview1Bounds = previewRow1.withSizeKeepingCentre (previewRow1.getWidth() / 2, previewRow1.getHeight());
     lfoWavePreview2Bounds = previewRow2.withSizeKeepingCentre (previewRow2.getWidth() / 2, previewRow2.getHeight());
@@ -641,9 +700,10 @@ void ModelingSynthTwoAudioProcessorEditor::resized()
         auto cell = row.removeFromLeft (slotWidth).reduced (6, 4);
         slotLabels[(size_t) i]->setBounds (cell.removeFromTop (18));
         slotBoxes[(size_t) i]->setBounds (cell.removeFromTop (28));
-        cell.removeFromTop (2);
+        cell.removeFromTop (4);
         slotAmounts[(size_t) i]->label.setBounds (cell.removeFromTop (16));
-        slotAmounts[(size_t) i]->slider.setBounds (cell.removeFromTop (24));
+        const auto sliderHeight = juce::jmax (28, cell.getHeight());
+        slotAmounts[(size_t) i]->slider.setBounds (cell.removeFromTop (sliderHeight));
     }
 
     auto layoutWaveRow = [] (juce::Rectangle<int> row,
@@ -663,10 +723,6 @@ void ModelingSynthTwoAudioProcessorEditor::resized()
 
     layoutWaveRow (waveRow1, lfo1WaveSineButton, lfo1WaveTriangleButton, lfo1WaveSampleHoldButton);
     layoutWaveRow (waveRow2, lfo2WaveSineButton, lfo2WaveTriangleButton, lfo2WaveSampleHoldButton);
-
-    auto keyboardArea = bounds.reduced (6, 0);
-    const auto keyboardWidth = juce::jmin (780, keyboardArea.getWidth());
-    keyboard.setBounds (keyboardArea.withSizeKeepingCentre (keyboardWidth, keyboardArea.getHeight()));
 
     placeTickerLabel (outputGainTicker, outputGain.slider);
 
@@ -826,12 +882,13 @@ void ModelingSynthTwoAudioProcessorEditor::updatePageVisibility()
 void ModelingSynthTwoAudioProcessorEditor::updateWaveformButtons()
 {
     auto updateWaveGroup = [] (int selectedIndex,
+                               bool isEnabled,
                                juce::Button& offButton,
                                juce::Button& sineButton,
                                juce::Button& triangleButton,
                                juce::Button& sampleHoldButton)
     {
-        offButton.setToggleState (selectedIndex == 3, juce::dontSendNotification);
+        offButton.setToggleState (isEnabled, juce::dontSendNotification);
         sineButton.setToggleState (selectedIndex == 0, juce::dontSendNotification);
         triangleButton.setToggleState (selectedIndex == 1, juce::dontSendNotification);
         sampleHoldButton.setToggleState (selectedIndex == 2, juce::dontSendNotification);
@@ -895,13 +952,15 @@ void ModelingSynthTwoAudioProcessorEditor::updateWaveformButtons()
         sampleHoldButton.setAlpha (selectorAlpha);
     };
 
+    const auto lfo1Enabled = lfo1WaveOffButton.getToggleState();
+    const auto lfo2Enabled = lfo2WaveOffButton.getToggleState();
+
     updateWaveGroup (lfoWaveformBox.getSelectedItemIndex(),
+                     lfo1Enabled,
                      lfo1WaveOffButton, lfo1WaveSineButton, lfo1WaveTriangleButton, lfo1WaveSampleHoldButton);
     updateWaveGroup (lfo2WaveformBox.getSelectedItemIndex(),
+                     lfo2Enabled,
                      lfo2WaveOffButton, lfo2WaveSineButton, lfo2WaveTriangleButton, lfo2WaveSampleHoldButton);
-
-    const auto lfo1Enabled = lfoWaveformBox.getSelectedItemIndex() != 3;
-    const auto lfo2Enabled = lfo2WaveformBox.getSelectedItemIndex() != 3;
 
     applyLfoSectionState (lfo1Enabled,
                           lfoRate, lfoDepth,
@@ -960,6 +1019,7 @@ void ModelingSynthTwoAudioProcessorEditor::timerCallback()
 void ModelingSynthTwoAudioProcessorEditor::drawLfoWavePreview (juce::Graphics& g,
                                                                juce::Rectangle<int> area,
                                                                int waveform,
+                                                               bool enabled,
                                                                float rateHz,
                                                                float depth,
                                                                float timeSeconds,
@@ -981,7 +1041,7 @@ void ModelingSynthTwoAudioProcessorEditor::drawLfoWavePreview (juce::Graphics& g
     const auto leftX = (float) plot.getX();
     const auto rightX = (float) plot.getRight();
     const auto width = juce::jmax (1.0f, rightX - leftX);
-    const auto isOff = waveform == 3;
+    const auto isOff = ! enabled;
 
     const auto strokeAlpha = isOff ? 0.42f : 0.88f;
     const auto gridAlpha = isOff ? 0.05f : 0.08f;
@@ -1009,9 +1069,6 @@ void ModelingSynthTwoAudioProcessorEditor::drawLfoWavePreview (juce::Graphics& g
         float value = 0.0f;
         switch (waveform)
         {
-            case 3: // Off
-                value = 0.0f;
-                break;
             case 1: // Triangle
                 value = 1.0f - 4.0f * std::abs (wrapped - 0.5f);
                 break;
@@ -1132,11 +1189,12 @@ void ModelingSynthTwoAudioProcessorEditor::setupSlider (LabeledSlider& control, 
 
     control.slider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
     control.slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 62, 18);
-    control.slider.setColour (juce::Slider::thumbColourId, accentA);
-    control.slider.setColour (juce::Slider::rotarySliderFillColourId, accentB);
-    control.slider.setColour (juce::Slider::textBoxTextColourId, bodyTextColour);
+    control.slider.setColour (juce::Slider::thumbColourId, dialPointerColour);
+    control.slider.setColour (juce::Slider::rotarySliderFillColourId, dialFillColour);
+    control.slider.setColour (juce::Slider::rotarySliderOutlineColourId, dialOutlineColour);
+    control.slider.setColour (juce::Slider::textBoxTextColourId, dialTextColour);
     control.slider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
-    control.slider.setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::black.withAlpha (0.22f));
+    control.slider.setColour (juce::Slider::textBoxBackgroundColourId, dialTextBackground);
     control.attachment = std::make_unique<SliderAttachment> (processorRef.parameters, parameterId, control.slider);
     addAndMakeVisible (control.slider);
 }

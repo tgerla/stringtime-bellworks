@@ -148,8 +148,10 @@ void ModalVoice::renderNextBlock (juce::AudioBuffer<float>& outputBuffer, int st
             break;
         }
 
-        const auto lfo1 = getNextLfoValue (lfoPhase[0], lfoRateHz[0], lfoWaveform[0], lfoSampleAndHold[0]) * lfoDepth[0];
-        const auto lfo2 = getNextLfoValue (lfoPhase[1], lfoRateHz[1], lfoWaveform[1], lfoSampleAndHold[1]) * lfoDepth[1];
+        const auto lfo1 = getNextLfoValue (lfoPhase[0], lfoRateHz[0], lfoWaveform[0], lfoSampleAndHold[0])
+                  * (lfoEnabled[0] ? lfoDepth[0] : 0.0f);
+        const auto lfo2 = getNextLfoValue (lfoPhase[1], lfoRateHz[1], lfoWaveform[1], lfoSampleAndHold[1])
+                  * (lfoEnabled[1] ? lfoDepth[1] : 0.0f);
 
         auto modCutoff = filterCutoff;
         auto modResonance = filterResonance;
@@ -297,9 +299,11 @@ void ModalVoice::updateLfoMatrixParameters()
 {
     lfoRateHz[0] = state.getRawParameterValue ("lfoRateHz")->load();
     lfoDepth[0] = state.getRawParameterValue ("lfoDepth")->load();
+    lfoEnabled[0] = state.getRawParameterValue ("lfoEnabled")->load() >= 0.5f;
     lfoWaveform[0] = (int) state.getRawParameterValue ("lfoWaveform")->load();
     lfoRateHz[1] = state.getRawParameterValue ("lfo2RateHz")->load();
     lfoDepth[1] = state.getRawParameterValue ("lfo2Depth")->load();
+    lfoEnabled[1] = state.getRawParameterValue ("lfo2Enabled")->load() >= 0.5f;
     lfoWaveform[1] = (int) state.getRawParameterValue ("lfo2Waveform")->load();
 
     matrixDestination[0][0] = (int) state.getRawParameterValue ("matrixDest1")->load();
@@ -635,9 +639,6 @@ float ModalVoice::getNextLfoValue (float& lfoPhaseRef, float rateHz, int wavefor
 
     switch (waveform)
     {
-        case 3: // Off
-            value = 0.0f;
-            break;
         case 1: // Triangle
             value = 1.0f - 4.0f * std::abs (lfoPhaseValue - 0.5f);
             break;

@@ -5,7 +5,8 @@ ModelingSynthTwoAudioProcessor::ModelingSynthTwoAudioProcessor()
     : AudioProcessor (BusesProperties().withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       parameters (*this, nullptr, "PARAMETERS", createParameterLayout())
 {
-    lastPresetDirectory = juce::File::getSpecialLocation (juce::File::userDocumentsDirectory);
+    initialiseUserPreferences();
+    loadLastPresetDirectoryFromPreferences();
     synth.setCurrentPlaybackSampleRate (44100.0);
 
     for (int i = 0; i < 12; ++i)
@@ -73,9 +74,11 @@ void ModelingSynthTwoAudioProcessor::applyPreset (int presetIndex)
     setParameterById ("ebowFocus", preset.ebowFocus);
     setParameterById ("lfoRateHz", preset.lfoRateHz);
     setParameterById ("lfoDepth", preset.lfoDepth);
+    setParameterById ("lfoEnabled", preset.lfoEnabled ? 1.0f : 0.0f);
     setParameterById ("lfoWaveform", (float) preset.lfoWaveform);
     setParameterById ("lfo2RateHz", preset.lfo2RateHz);
     setParameterById ("lfo2Depth", preset.lfo2Depth);
+    setParameterById ("lfo2Enabled", preset.lfo2Enabled ? 1.0f : 0.0f);
     setParameterById ("lfo2Waveform", (float) preset.lfo2Waveform);
     setParameterById ("matrixDest1", (float) preset.matrixDest1);
     setParameterById ("matrixAmount1", preset.matrixAmount1);
@@ -140,10 +143,12 @@ void ModelingSynthTwoAudioProcessor::randomizeParameters()
 
     setParameterById ("lfoRateHz", randomInRange (0.05f, 12.0f));
     setParameterById ("lfoDepth", randomInRange (0.0f, 0.9f));
-    setParameterById ("lfoWaveform", (float) random.nextInt (4));
+    setParameterById ("lfoEnabled", random.nextBool() ? 1.0f : 0.0f);
+    setParameterById ("lfoWaveform", (float) random.nextInt (3));
     setParameterById ("lfo2RateHz", randomInRange (0.05f, 12.0f));
     setParameterById ("lfo2Depth", randomInRange (0.0f, 0.9f));
-    setParameterById ("lfo2Waveform", (float) random.nextInt (4));
+    setParameterById ("lfo2Enabled", random.nextBool() ? 1.0f : 0.0f);
+    setParameterById ("lfo2Waveform", (float) random.nextInt (3));
 
     setParameterById ("matrixDest1", (float) random.nextInt (11));
     setParameterById ("matrixAmount1", randomInRange (-0.85f, 0.85f));
@@ -169,10 +174,14 @@ void ModelingSynthTwoAudioProcessor::randomizeParameters()
 bool ModelingSynthTwoAudioProcessor::savePresetToFile (const juce::File& file)
 {
     auto stateTree = parameters.copyState();
+    stateTree.removeProperty (lastPresetDirectoryKey, nullptr);
     auto xml = std::unique_ptr<juce::XmlElement> (stateTree.createXml());
 
     if (xml == nullptr)
         return false;
+
+    while (auto* oldMetadata = xml->getChildByName ("PresetMetadata"))
+        xml->removeChildElement (oldMetadata, true);
 
     if (auto* metadata = xml->createNewChildElement ("PresetMetadata"))
     {
@@ -195,7 +204,9 @@ bool ModelingSynthTwoAudioProcessor::loadPresetFromFile (const juce::File& file)
     if (xmlState == nullptr || ! xmlState->hasTagName (parameters.state.getType()))
         return false;
 
-    parameters.replaceState (juce::ValueTree::fromXml (*xmlState));
+    auto restoredState = juce::ValueTree::fromXml (*xmlState);
+    restoredState.removeProperty (lastPresetDirectoryKey, nullptr);
+    parameters.replaceState (restoredState);
     setLastPresetDirectory (file.getParentDirectory());
     return true;
 }
@@ -210,11 +221,48 @@ void ModelingSynthTwoAudioProcessor::setLastPresetDirectory (const juce::File& d
     if (directory.isDirectory())
     {
         lastPresetDirectory = directory;
+        storeLastPresetDirectoryInPreferences();
         return;
     }
 
     if (directory.existsAsFile())
+    {
         lastPresetDirectory = directory.getParentDirectory();
+        storeLastPresetDirectoryInPreferences();
+    }
+}
+
+void ModelingSynthTwoAudioProcessor::initialiseUserPreferences()
+{
+    juce::PropertiesFile::Options options;
+    options.applicationName = JucePlugin_Name;
+    options.filenameSuffix = ".settings";
+    options.osxLibrarySubFolder = "Application Support";
+   #if JUCE_LINUX || JUCE_BSD
+    options.folderName = "~/.config";
+   #else
+    options.folderName = "";
+   #endif
+
+    appProperties.setStorageParameters (options);
+}
+
+void ModelingSynthTwoAudioProcessor::loadLastPresetDirectoryFromPreferences()
+{
+    lastPresetDirectory = juce::File::getSpecialLocation (juce::File::userDocumentsDirectory);
+
+    if (auto* settings = appProperties.getUserSettings())
+    {
+        const auto savedDirectory = settings->getValue (lastPresetDirectoryKey);
+        if (savedDirectory.isNotEmpty())
+            setLastPresetDirectory (juce::File (savedDirectory));
+    }
+}
+
+void ModelingSynthTwoAudioProcessor::storeLastPresetDirectoryInPreferences()
+{
+    if (auto* settings = appProperties.getUserSettings())
+        settings->setValue (lastPresetDirectoryKey, lastPresetDirectory.getFullPathName());
 }
 
 void ModelingSynthTwoAudioProcessor::initialisePresetBank()
@@ -491,7 +539,7 @@ void ModelingSynthTwoAudioProcessor::changeProgramName (int, const juce::String&
 void ModelingSynthTwoAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     auto stateTree = parameters.copyState();
-    stateTree.setProperty ("lastPresetDirectory", lastPresetDirectory.getFullPathName(), nullptr);
+    stateTree.removeProperty (lastPresetDirectoryKey, nullptr);
     std::unique_ptr<juce::XmlElement> xml (stateTree.createXml());
     copyXmlToBinary (*xml, destData);
 }
@@ -505,11 +553,8 @@ void ModelingSynthTwoAudioProcessor::setStateInformation (const void* data, int 
         if (xmlState->hasTagName (parameters.state.getType()))
         {
             auto restoredState = juce::ValueTree::fromXml (*xmlState);
+            restoredState.removeProperty (lastPresetDirectoryKey, nullptr);
             parameters.replaceState (restoredState);
-
-            const auto savedDirectory = restoredState.getProperty ("lastPresetDirectory").toString();
-            if (savedDirectory.isNotEmpty())
-                setLastPresetDirectory (juce::File (savedDirectory));
         }
     }
 }
@@ -597,14 +642,18 @@ juce::AudioProcessorValueTreeState::ParameterLayout ModelingSynthTwoAudioProcess
         "lfoRateHz", "LFO Rate", juce::NormalisableRange<float> (0.05f, 20.0f, 0.001f, 0.35f), 0.35f));
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         "lfoDepth", "LFO Depth", juce::NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.0f));
+    params.push_back (std::make_unique<juce::AudioParameterBool> (
+        "lfoEnabled", "LFO Enabled", true));
     params.push_back (std::make_unique<juce::AudioParameterChoice> (
-        "lfoWaveform", "LFO Waveform", juce::StringArray { "Sine", "Triangle", "Sample & Hold", "Off" }, 0));
+        "lfoWaveform", "LFO Waveform", juce::StringArray { "Sine", "Triangle", "Sample & Hold" }, 0));
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         "lfo2RateHz", "LFO 2 Rate", juce::NormalisableRange<float> (0.05f, 20.0f, 0.001f, 0.35f), 0.60f));
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         "lfo2Depth", "LFO 2 Depth", juce::NormalisableRange<float> (0.0f, 1.0f, 0.001f), 0.0f));
+    params.push_back (std::make_unique<juce::AudioParameterBool> (
+        "lfo2Enabled", "LFO 2 Enabled", true));
     params.push_back (std::make_unique<juce::AudioParameterChoice> (
-        "lfo2Waveform", "LFO 2 Waveform", juce::StringArray { "Sine", "Triangle", "Sample & Hold", "Off" }, 0));
+        "lfo2Waveform", "LFO 2 Waveform", juce::StringArray { "Sine", "Triangle", "Sample & Hold" }, 0));
 
     const juce::StringArray matrixDestinations {
         "None",

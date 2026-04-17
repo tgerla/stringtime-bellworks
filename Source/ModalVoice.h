@@ -129,6 +129,7 @@ private:
 
     std::array<float, lfoCount> lfoRateHz { 0.35f, 0.60f };
     std::array<float, lfoCount> lfoDepth { 0.0f, 0.0f };
+    std::array<bool, lfoCount> lfoEnabled { true, true };
     std::array<int, lfoCount> lfoWaveform { 0, 0 };
     std::array<std::array<int, matrixSlotCount>, lfoCount> matrixDestination {};
     std::array<std::array<float, matrixSlotCount>, lfoCount> matrixAmount {};
