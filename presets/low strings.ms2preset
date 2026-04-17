@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<PARAMETERS lastPresetDirectory="/Users/tgerla/git/modeling-synth-two/presets">
+  <PARAM id="attack" value="0.1979980766773224"/>
+  <PARAM id="decay" value="2.231683254241943"/>
+  <PARAM id="delayFeedback" value="0.3930000066757202"/>
+  <PARAM id="delayMix" value="0.2080000042915344"/>
+  <PARAM id="delayTimeMs" value="9.229999542236328"/>
+  <PARAM id="filterCutoff" value="210.2299957275391"/>
+  <PARAM id="filterResonance" value="1.380000114440918"/>
+  <PARAM id="malletHardness" value="0.9150000214576721"/>
+  <PARAM id="material" value="6.0"/>
+  <PARAM id="outputGainDb" value="-5.290000438690186"/>
+  <PARAM id="release" value="0.2442300021648407"/>
+  <PARAM id="reverbDamping" value="0.7980000376701355"/>
+  <PARAM id="reverbMix" value="0.5910000205039978"/>
+  <PARAM id="reverbRoomSize" value="0.687000036239624"/>
+  <PARAM id="sustain" value="0.05700000375509262"/>
+  <PARAM id="sympatheticBrightness" value="0.8390000462532043"/>
+  <PARAM id="sympatheticCoupling" value="0.3970000147819519"/>
+  <PARAM id="sympatheticDecay" value="0.5900000333786011"/>
+  <PARAM id="sympatheticMix" value="0.386000007390976"/>
+  <PARAM id="ebowDrive" value="0.4020000100135803"/>
+  <PARAM id="ebowFocus" value="0.2180000096559525"/>
+  <PARAM id="lfoDepth" value="0.09200000762939453"/>
+  <PARAM id="lfoRateHz" value="9.916000366210938"/>
+  <PARAM id="lfoWaveform" value="3.0"/>
+  <PARAM id="matrixAmount1" value="0.6140000820159912"/>
+  <PARAM id="matrixAmount2" value="0.4360000789165497"/>
+  <PARAM id="matrixAmount3" value="-0.7109999656677246"/>
+  <PARAM id="matrixDest1" value="9.0"/>
+  <PARAM id="matrixDest2" value="10.0"/>
+  <PARAM id="matrixDest3" value="4.0"/>
+  <PARAM id="malletMaterial" value="3.0"/>
+  <PARAM id="compAttackMs"/>
+  <PARAM id="compMakeupDb" value="10.6899995803833"/>
+  <PARAM id="compRatio"/>
+  <PARAM id="compReleaseMs"/>
+  <PARAM id="compThresholdDb"/>
+  <PresetMetadata plugin="Modeling Synth Two" version="0.1.0" savedAt="2026-04-17T11:27:59.479-04:00"/>
+  <PARAM id="lfo2Depth" value="0.8650000691413879"/>
+  <PARAM id="lfo2RateHz" value="0.6630000472068787"/>
+  <PARAM id="lfo2Waveform" value="0.0"/>
+  <PARAM id="matrixAmount4" value="-0.09199995547533035"/>
+  <PARAM id="matrixAmount5" value="0.3750000596046448"/>
+  <PARAM id="matrixAmount6" value="-0.3089999556541443"/>
+  <PARAM id="matrixDest4" value="1.0"/>
+  <PARAM id="matrixDest5" value="0.0"/>
+  <PARAM id="matrixDest6" value="2.0"/>
+  <PARAM id="overdriveDriveDb" value="10.84000015258789"/>
+  <PARAM id="overdriveMix" value="0.213000014424324"/>
+  <PARAM id="overdriveOutputDb" value="-5.640000343322754"/>
+  <PARAM id="overdriveTone" value="0.25"/>
+  <PARAM id="sympatheticCourses" value="2.0"/>
+  <PARAM id="sympatheticDetuneCents" value="9.179999351501465"/>
+  <PARAM id="sympatheticMaterial" value="3.0"/>
+  <PARAM id="sympatheticSpacing" value="0.1940000057220459"/>
+  <PARAM id="sympatheticTuningMode" value="0.0"/>
+  <PresetMetadata plugin="Modeling Synth Two" version="0.1.0" savedAt="2026-04-17T13:03:23.305-04:00"/>
+</PARAMETERS>

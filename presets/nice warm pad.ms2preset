@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<PARAMETERS>
+  <PARAM id="attack" value="0.3558992445468903"/>
+  <PARAM id="decay" value="1.72603452205658"/>
+  <PARAM id="delayFeedback" value="0.5990000367164612"/>
+  <PARAM id="delayMix" value="0.3880000114440918"/>
+  <PARAM id="delayTimeMs" value="262.9499816894531"/>
+  <PARAM id="filterCutoff" value="445.9100036621094"/>
+  <PARAM id="filterResonance" value="2.44100022315979"/>
+  <PARAM id="malletHardness" value="0.0"/>
+  <PARAM id="material" value="1.0"/>
+  <PARAM id="outputGainDb" value="-13.43000030517578"/>
+  <PARAM id="release" value="1.982720851898193"/>
+  <PARAM id="reverbDamping" value="0.2569999992847443"/>
+  <PARAM id="reverbMix" value="0.367000013589859"/>
+  <PARAM id="reverbRoomSize" value="0.7610000371932983"/>
+  <PARAM id="sustain" value="0.3410000205039978"/>
+  <PARAM id="sympatheticBrightness" value="0.4550000131130219"/>
+  <PARAM id="sympatheticCoupling" value="0.687000036239624"/>
+  <PARAM id="sympatheticDecay" value="0.2790000140666962"/>
+  <PARAM id="sympatheticMix" value="0.703000009059906"/>
+  <PARAM id="ebowDrive" value="0.4050000309944153"/>
+  <PARAM id="ebowFocus" value="0.6500000357627869"/>
+  <PARAM id="lfoDepth" value="0.2730000019073486"/>
+  <PARAM id="lfoRateHz" value="6.425000190734863"/>
+  <PARAM id="lfoWaveform" value="2.0"/>
+  <PARAM id="matrixAmount1" value="-0.5769999623298645"/>
+  <PARAM id="matrixAmount2" value="-0.4399999678134918"/>
+  <PARAM id="matrixAmount3" value="-0.04199995473027229"/>
+  <PARAM id="matrixDest1" value="0.0"/>
+  <PARAM id="matrixDest2" value="8.0"/>
+  <PARAM id="matrixDest3" value="3.0"/>
+  <PARAM id="malletMaterial" value="0.0"/>
+  <PARAM id="compAttackMs"/>
+  <PARAM id="compMakeupDb" value="10.6899995803833"/>
+  <PARAM id="compRatio"/>
+  <PARAM id="compReleaseMs"/>
+  <PARAM id="compThresholdDb"/>
+  <PresetMetadata plugin="Modeling Synth Two" version="0.1.0" savedAt="2026-04-17T11:27:02.066-04:00"/>
+</PARAMETERS>
