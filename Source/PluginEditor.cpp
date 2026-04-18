@@ -733,6 +733,12 @@ bool ModelingSynthTwoAudioProcessorEditor::keyPressed (const juce::KeyPress& key
 {
     const auto character = juce::CharacterFunctions::toLowerCase (key.getTextCharacter());
 
+    if (character == 'r' && key.getModifiers().isCommandDown())
+    {
+        randomizePreset();
+        return true;
+    }
+
     if (character == 'z')
     {
         changeKeyboardOctave (-1);

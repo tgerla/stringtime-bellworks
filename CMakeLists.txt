@@ -8,6 +8,8 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 include(FetchContent)
 
+set(STRINGTIME_PLUGIN_NAME "Stringtime Bellworks")
+
 # Pull JUCE at configure time.
 FetchContent_Declare(
     juce
@@ -22,7 +24,7 @@ juce_add_plugin(StringtimeBellworks
     PLUGIN_MANUFACTURER_CODE Locl
     PLUGIN_CODE Mdl2
     FORMATS AU VST3 Standalone
-    PRODUCT_NAME "Stringtime Bellworks"
+    PRODUCT_NAME "${STRINGTIME_PLUGIN_NAME}"
     IS_SYNTH TRUE
     NEEDS_MIDI_INPUT TRUE
     NEEDS_MIDI_OUTPUT FALSE
@@ -59,3 +61,32 @@ target_link_libraries(StringtimeBellworks
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags
 )
+
+    if(APPLE)
+        set(PACKAGE_STAGING_NAME "${PROJECT_NAME}-${PROJECT_VERSION}-$<CONFIG>-macOS")
+
+        add_custom_target(package_macos
+        DEPENDS
+            StringtimeBellworks_AU
+            StringtimeBellworks_VST3
+            StringtimeBellworks_Standalone
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/dist"
+        COMMAND ${CMAKE_COMMAND} -E rm -rf "${CMAKE_BINARY_DIR}/${PACKAGE_STAGING_NAME}"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/${PACKAGE_STAGING_NAME}/AU"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/${PACKAGE_STAGING_NAME}/VST3"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/${PACKAGE_STAGING_NAME}/Standalone"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_BINARY_DIR}/${PROJECT_NAME}_artefacts/$<CONFIG>/AU/${STRINGTIME_PLUGIN_NAME}.component"
+            "${CMAKE_BINARY_DIR}/${PACKAGE_STAGING_NAME}/AU/${STRINGTIME_PLUGIN_NAME}.component"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_BINARY_DIR}/${PROJECT_NAME}_artefacts/$<CONFIG>/VST3/${STRINGTIME_PLUGIN_NAME}.vst3"
+            "${CMAKE_BINARY_DIR}/${PACKAGE_STAGING_NAME}/VST3/${STRINGTIME_PLUGIN_NAME}.vst3"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_BINARY_DIR}/${PROJECT_NAME}_artefacts/$<CONFIG>/Standalone/${STRINGTIME_PLUGIN_NAME}.app"
+            "${CMAKE_BINARY_DIR}/${PACKAGE_STAGING_NAME}/Standalone/${STRINGTIME_PLUGIN_NAME}.app"
+        COMMAND ${CMAKE_COMMAND} -E tar "cfv" "${CMAKE_BINARY_DIR}/dist/${PACKAGE_STAGING_NAME}.zip" --format=zip "${PACKAGE_STAGING_NAME}"
+        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
+        COMMENT "Staging and zipping AU/VST3/Standalone artifacts for macOS redistribution"
+        VERBATIM
+        )
+    endif()

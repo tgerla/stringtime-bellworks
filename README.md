@@ -42,6 +42,19 @@ cmake -S . -B build
 cmake --build build --config Release
 ```
 
+Create a redistributable macOS package zip (AU + VST3 + Standalone):
+
+```bash
+cmake -S . -B build
+cmake --build build --config Release --target package_macos
+```
+
+The generated zip will be placed in `build/dist/` and contains:
+
+- `AU/Stringtime Bellworks.component`
+- `VST3/Stringtime Bellworks.vst3`
+- `Standalone/Stringtime Bellworks.app`
+
 This project uses CMake `FetchContent` to download JUCE automatically at configure time.
 
 ## Notes

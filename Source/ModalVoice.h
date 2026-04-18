@@ -107,8 +107,21 @@ private:
     int activeModes = 0;
     int activeSympatheticModes = 0;
     int excitationSamplesRemaining = 0;
+    int excitationTotalSamples = 0;
     float excitationState = 0.0f;
     float excitationDecay = 0.997f;
+    float excitationLowpassState = 0.0f;
+    float excitationHighpassState = 0.0f;
+    float excitationPrevInput = 0.0f;
+    float excitationLowpassAlpha = 0.25f;
+    float excitationHighpassAlpha = 0.75f;
+    float excitationLowpassMix = 1.0f;
+    float excitationHighpassMix = 0.0f;
+    float excitationClickAmount = 0.0f;
+    int materialModeCount = maxModes;
+    float materialModeDecayBias = 0.0f;
+    float materialHighModeDamping = 0.0f;
+    float materialModeCouplingScale = 1.0f;
     float baseFrequencyHz = 220.0f;
     float velocityGain = 0.0f;
 

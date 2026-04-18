@@ -72,32 +72,71 @@ void ModalVoice::startNote (int midiNoteNumber, float velocity, juce::Synthesise
 
     float impactTimeScale = 1.0f;
     float impactDecayOffset = 0.0f;
+    float excitationLowpassCutoffHz = 1800.0f;
+    float excitationHighpassCutoffHz = 600.0f;
+
+    excitationLowpassMix = 0.70f;
+    excitationHighpassMix = 0.35f;
+    excitationClickAmount = 0.04f;
 
     switch (mallet)
     {
         case MalletType::felt:
             impactTimeScale = 1.7f;
             impactDecayOffset = 0.012f;
+            excitationLowpassCutoffHz = 900.0f;
+            excitationHighpassCutoffHz = 220.0f;
+            excitationLowpassMix = 1.00f;
+            excitationHighpassMix = 0.08f;
+            excitationClickAmount = 0.0f;
             break;
         case MalletType::rubber:
             impactTimeScale = 1.2f;
             impactDecayOffset = 0.006f;
+            excitationLowpassCutoffHz = 1700.0f;
+            excitationHighpassCutoffHz = 550.0f;
+            excitationLowpassMix = 0.82f;
+            excitationHighpassMix = 0.28f;
+            excitationClickAmount = 0.03f;
             break;
         case MalletType::wood:
             impactTimeScale = 0.92f;
             impactDecayOffset = 0.001f;
+            excitationLowpassCutoffHz = 3000.0f;
+            excitationHighpassCutoffHz = 1200.0f;
+            excitationLowpassMix = 0.58f;
+            excitationHighpassMix = 0.56f;
+            excitationClickAmount = 0.08f;
             break;
         case MalletType::metal:
             impactTimeScale = 0.66f;
             impactDecayOffset = -0.005f;
+            excitationLowpassCutoffHz = 7600.0f;
+            excitationHighpassCutoffHz = 3200.0f;
+            excitationLowpassMix = 0.28f;
+            excitationHighpassMix = 0.95f;
+            excitationClickAmount = 0.18f;
             break;
         default:
             break;
     }
 
+    const auto dt = 1.0f / (float) juce::jmax (1.0, sampleRate);
+    const auto lowOmega = juce::MathConstants<float>::twoPi * juce::jmax (20.0f, excitationLowpassCutoffHz);
+    excitationLowpassAlpha = 1.0f - std::exp (-lowOmega * dt);
+
+    const auto hpCutoff = juce::jmax (20.0f, excitationHighpassCutoffHz);
+    const auto rc = 1.0f / (juce::MathConstants<float>::twoPi * hpCutoff);
+    excitationHighpassAlpha = rc / (rc + dt);
+
+    excitationLowpassState = 0.0f;
+    excitationHighpassState = 0.0f;
+    excitationPrevInput = 0.0f;
+
     excitationState = 1.0f;
     excitationSamplesRemaining = juce::jmax (8,
                                              (int) (sampleRate * juce::jmap (hardness, 0.010f, 0.003f) * impactTimeScale));
+    excitationTotalSamples = excitationSamplesRemaining;
     excitationDecay = juce::jlimit (0.94f, 0.9995f, juce::jmap (hardness, 0.992f, 0.965f) + impactDecayOffset);
 
     updateAdsrFromParameters();
@@ -353,6 +392,10 @@ void ModalVoice::configureMaterialModel (MaterialType material,
 
     const std::array<float, maxModes>* ratios = &woodRatios;
     const std::array<float, maxModes>* decays = &woodDecays;
+    auto maxMaterialModes = maxModes;
+    auto localMaterialDecayBias = -0.00002f;
+    auto localHighModeDamping = 0.00010f;
+    auto localModeCouplingScale = 1.0f;
     float malletBrightness = 1.0f;
     float couplingScale = 1.0f;
 
@@ -383,40 +426,80 @@ void ModalVoice::configureMaterialModel (MaterialType material,
         case MaterialType::gong:
             ratios = &gongRatios;
             decays = &gongDecays;
+            maxMaterialModes = 7;
+            localMaterialDecayBias = 0.00008f;
+            localHighModeDamping = 0.00006f;
+            localModeCouplingScale = 1.05f;
             break;
         case MaterialType::cymbal:
             ratios = &cymbalRatios;
             decays = &cymbalDecays;
+            maxMaterialModes = 10;
+            localMaterialDecayBias = -0.00001f;
+            localHighModeDamping = 0.00003f;
+            localModeCouplingScale = 1.20f;
             break;
         case MaterialType::glass:
             ratios = &glassRatios;
             decays = &glassDecays;
+            maxMaterialModes = 6;
+            localMaterialDecayBias = -0.00006f;
+            localHighModeDamping = 0.00008f;
+            localModeCouplingScale = 1.10f;
             break;
         case MaterialType::aerogelCathedral:
             ratios = &aerogelRatios;
             decays = &aerogelDecays;
+            maxMaterialModes = 10;
+            localMaterialDecayBias = 0.00012f;
+            localHighModeDamping = 0.00002f;
+            localModeCouplingScale = 0.92f;
             break;
         case MaterialType::neutronPorcelain:
             ratios = &neutronRatios;
             decays = &neutronDecays;
+            maxMaterialModes = 7;
+            localMaterialDecayBias = -0.00014f;
+            localHighModeDamping = 0.00014f;
+            localModeCouplingScale = 1.18f;
             break;
         case MaterialType::plasmaIce:
             ratios = &plasmaIceRatios;
             decays = &plasmaIceDecays;
+            maxMaterialModes = 10;
+            localMaterialDecayBias = 0.00003f;
+            localHighModeDamping = 0.00007f;
+            localModeCouplingScale = 1.16f;
             break;
         case MaterialType::timeCrystal:
             ratios = &timeCrystalRatios;
             decays = &timeCrystalDecays;
+            maxMaterialModes = 8;
+            localMaterialDecayBias = 0.00006f;
+            localHighModeDamping = 0.00005f;
+            localModeCouplingScale = 1.25f;
             break;
         case MaterialType::wood:
         default:
+            maxMaterialModes = 6;
+            localMaterialDecayBias = -0.00010f;
+            localHighModeDamping = 0.00012f;
+            localModeCouplingScale = 0.95f;
             break;
     }
+
+    materialModeCount = juce::jlimit (1, maxModes, maxMaterialModes);
+    materialModeDecayBias = localMaterialDecayBias;
+    materialHighModeDamping = localHighModeDamping;
+    materialModeCouplingScale = localModeCouplingScale;
 
     activeModes = 0;
 
     for (int i = 0; i < maxModes; ++i)
     {
+        if (i >= materialModeCount)
+            break;
+
         const auto ratio = (*ratios)[i];
         if (ratio <= 0.0f)
             break;
@@ -428,10 +511,12 @@ void ModalVoice::configureMaterialModel (MaterialType material,
         const auto brightness = juce::jmap (hardness, 0.4f, 1.8f) * malletBrightness;
         const auto modeWeight = 1.0f / (1.0f + (float) i * 0.45f);
         modeAmplitude[i] = velocity * modeWeight;
-        modeCoupling[i] = modeWeight * brightness * couplingScale;
+        modeCoupling[i] = modeWeight * brightness * couplingScale * materialModeCouplingScale;
 
         const auto baseDecay = (*decays)[i];
-        modeDecay[i] = juce::jlimit (0.990f, 0.99995f, baseDecay - (hardness * 0.0003f * (float) i));
+        const auto hardnessLoss = hardness * 0.0003f * (float) i;
+        const auto materialLoss = materialHighModeDamping * (float) i;
+        modeDecay[i] = juce::jlimit (0.990f, 0.99995f, baseDecay + materialModeDecayBias - hardnessLoss - materialLoss);
 
         ++activeModes;
     }
@@ -563,7 +648,19 @@ float ModalVoice::renderOneSample (float sympatheticMixValue,
 
     if (excitationSamplesRemaining > 0)
     {
-        excitation = ((random.nextFloat() * 2.0f) - 1.0f) * excitationState;
+        const auto white = (random.nextFloat() * 2.0f) - 1.0f;
+        excitationLowpassState += (white - excitationLowpassState) * excitationLowpassAlpha;
+        excitationHighpassState = excitationHighpassAlpha * (excitationHighpassState + white - excitationPrevInput);
+        excitationPrevInput = white;
+
+        const auto progress = 1.0f - ((float) excitationSamplesRemaining / (float) juce::jmax (1, excitationTotalSamples));
+        const auto clickEnvelope = std::exp (-38.0f * progress);
+        const auto click = white * excitationClickAmount * clickEnvelope;
+
+        excitation = (excitationLowpassState * excitationLowpassMix
+                      + excitationHighpassState * excitationHighpassMix
+                      + click)
+                     * excitationState;
         excitationState *= excitationDecay;
         --excitationSamplesRemaining;
     }
